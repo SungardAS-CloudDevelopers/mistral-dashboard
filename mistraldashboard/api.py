@@ -27,6 +27,7 @@ SERVICE_TYPE = 'workflowv2'
 @memoized.memoized
 def mistralclient(request):
     return mistral_client.client(
+        mistral_url = settings.MISTRAL_URL,
         username=request.user.username,
         auth_token=request.user.token.id,
         project_id=request.user.tenant_id,
@@ -92,7 +93,6 @@ def task_get(request, task_id=None):
     """
 
     return mistralclient(request).tasks.get(task_id)
-
 
 @handle_errors(_("Unable to retrieve workflows."), [])
 def workflow_list(request):
