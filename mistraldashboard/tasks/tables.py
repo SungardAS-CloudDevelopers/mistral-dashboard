@@ -72,7 +72,7 @@ class TaskTable(tables.DataTable):
     )
     result = tables.Column(
         "",
-        verbose_name=_("Result"),
+        verbose_name=_("Input"),
         empty_value=_("View"),
         link="horizon:mistral:tasks:result",
         link_classes=("ajax-modal",)
