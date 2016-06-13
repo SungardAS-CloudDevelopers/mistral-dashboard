@@ -169,6 +169,16 @@ def task_get(request, task_id=None):
     return mistralclient(request).tasks.get(task_id)
 
 
+@handle_errors(_("Unable to rerun task."), [])
+def task_rerun(request, task_id):
+    """Rerun specific task.
+
+    :param task_id: Task ID
+    """
+
+    return mistralclient(request).tasks.rerun(task_id)
+
+
 @handle_errors(_("Unable to retrieve workflows"), [])
 def workflow_list(request):
     """Returns all workflows."""

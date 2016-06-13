@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext_lazy
 
 from horizon import exceptions
 from horizon import tables
@@ -25,6 +26,36 @@ from mistraldashboard.default.utils import humantime
 from mistraldashboard.default.utils import label
 
 SmartCell.init()
+
+
+class ReReunTask(tables.BatchAction):
+    name = "rerun task"
+
+    @staticmethod
+    def action_present(count):
+        return ungettext_lazy(
+            u"Rerun Task",
+            u"Rerun Tasks",
+            count
+        )
+
+    @staticmethod
+    def action_past(count):
+        return ungettext_lazy(
+            u"Rerun Task",
+            u"Rerun Tasks",
+            count
+        )
+
+    def allowed(self, request, instance):
+        if instance is None:
+            return False
+        if instance.state == "ERROR":
+            return True
+        return False
+
+    def action(self, request, obj_id):
+        api.task_rerun(request, obj_id)
 
 
 class UpdateRow(tables.Row):
@@ -107,6 +138,7 @@ class TaskTable(tables.DataTable):
     class Meta(object):
         name = "tasks"
         verbose_name = _("Tasks")
-        table_actions = (tables.FilterAction,)
+        table_actions = (ReReunTask, tables.FilterAction)
         status_columns = ["state"]
         row_class = UpdateRow
+        row_actions = (ReReunTask,)
