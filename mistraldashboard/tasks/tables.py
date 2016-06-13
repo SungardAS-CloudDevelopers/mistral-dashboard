@@ -35,6 +35,7 @@ class ReReunTask(tables.BatchAction):
     def action_present(count):
         return ungettext_lazy(
             u"Rerun Task",
+            u"Rerun Tasks",
             count
         )
 
@@ -42,6 +43,7 @@ class ReReunTask(tables.BatchAction):
     def action_past(count):
         return ungettext_lazy(
             u"Rerun Task",
+            u"Rerun Tasks",
             count
         )
 
