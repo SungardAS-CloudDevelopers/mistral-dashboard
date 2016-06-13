@@ -28,6 +28,8 @@ from mistraldashboard import api
 from mistraldashboard.default.utils import prettyprint
 from mistraldashboard import forms as mistral_forms
 from mistraldashboard.tasks.tables import TaskTable
+import json
+import yaml
 
 
 def get_single_task_data(request, **kwargs):
@@ -40,6 +42,66 @@ def get_single_task_data(request, **kwargs):
         exceptions.handle(request, msg, redirect=redirect)
 
     return task
+
+
+def get_published_data(request, **kwargs):
+    published_data = {}
+    try:
+        execution_id = kwargs['execution_id']
+        tasks = api.task_list(request, execution_id)
+        for task in tasks:
+            published_data.update(json.loads(task.published))
+    except Exception:
+        msg = _('Unable to get tasks "%s".') % execution_id
+        redirect = reverse('horizon:mistral:tasks:index')
+        exceptions.handle(request, msg, redirect=redirect)
+
+    return published_data
+
+
+def get_execution_input(request, **kwargs):
+    try:
+        execution_id = kwargs['execution_id']
+        execution = api.execution_get(request, execution_id)
+    except Exception:
+        msg = _('Unable to get execution definition "%s".') % execution_id
+        redirect = reverse('horizon:mistral:tasks:index')
+        exceptions.handle(request, msg, redirect=redirect)
+
+    return json.loads(execution.input), execution.workflow_name
+
+
+def get_task_definition(request, **kwargs):
+    try:
+        workflow_name = kwargs['workflow_name']
+        task_name = kwargs['task_name']
+        workflow = api.workflow_get(request, workflow_name)
+    except Exception:
+        msg = _('Unable to get workflow "%s".') % workflow_name
+        redirect = reverse('horizon:mistral:tasks:index')
+        exceptions.handle(request, msg, redirect=redirect)
+
+    definition = yaml.load(workflow.definition)
+    tasks_definitions = definition[definition.keys()[0]]["tasks"]
+    return tasks_definitions[task_name]
+
+
+def get_task_inputs(task_definition):
+    inputs = {}
+    action_tag = task_definition["action"]
+    task_inputs = action_tag.partition(' ')[2]
+    if len(task_inputs) == 0:
+        task_inputs = task_definition["input"]
+        for key, val in task_inputs.iteritems():
+            if type(val) == type(""):
+                val = val.replace("<% $.", "").replace(" %>", "")
+            inputs[key] = val
+    else:
+        for input in task_inputs.split(" %> "):
+            param = input.replace(" %>", "").split("=<% $.")
+            if len(param) == 2:
+                inputs[param[0]] = param[1]
+    return inputs
 
 
 class ExecutionView(tables.DataTableView):
@@ -93,8 +155,26 @@ class CodeView(forms.ModalFormView):
         task = get_single_task_data(self.request, **self.kwargs)
         io = {}
 
+        execution_id = task.workflow_execution_id
+        tasks_outputs = get_published_data(self.request,
+                                           execution_id=execution_id)
+        input, workflow_name = get_execution_input(self.request,
+                                                   execution_id=execution_id)
+        task_definition = get_task_definition(self.request,
+                                              task_name=task.name,
+                                              workflow_name=workflow_name)
+        task_input = {}
+        task_inputs = get_task_inputs(task_definition)
+        for input_name, input_val in task_inputs.iteritems():
+            try:
+                task_input[input_name] = input[input_val]
+            except KeyError:
+                #find the output in tasks published results
+                task_input[input_name] = tasks_outputs.get(input_val)
+        task.result = json.dumps(task_input).encode('utf-8')
+
         if column == 'result':
-            io['name'] = _('Result')
+            io['name'] = _('Input')
             io['value'] = task.result = prettyprint(task.result)
         elif column == 'published':
             io['name'] = _('Published')
