@@ -28,6 +28,11 @@ from mistraldashboard.default.utils import label
 SmartCell.init()
 
 
+apollo_workflows = ['delete_user.delete_user',
+                    'user_registration.user_registration',
+                    'customer_registration.customer_registration']
+
+
 class ReReunTask(tables.BatchAction):
     name = "rerun task"
 
@@ -50,7 +55,7 @@ class ReReunTask(tables.BatchAction):
     def allowed(self, request, instance):
         if instance is None:
             return False
-        if instance.state == "ERROR":
+        if instance.state == "ERROR" and instance.workflow_name in apollo_workflows:
             return True
         return False
 
